@@ -29,7 +29,9 @@ function App() {
   const [showBriefing, setShowBriefing] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
-
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
   const regions = ['All', 'KP', 'Balochistan', 'Punjab', 'Sindh', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad', 'Other'];
   const types = ['All', 'Attack', 'Operation', 'Militancy', 'Protest', 'Diplomacy', 'Political', 'Other'];
   const severities = ['All', 'Critical', 'High', 'Medium', 'Low'];
