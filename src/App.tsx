@@ -227,6 +227,12 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
       return `Based on the current incident data, I can analyze trends, regional hotspots, actor involvement, and severity patterns. For historical context on groups like TTP, BLA, or ISKP, I can provide background analysis. Could you refine your question to focus on a specific region, actor, or trend?`;
     };
 
+    // ONLY USE FALLBACK - skip Gemini entirely
+    const response = generateChatResponse(userMsg);
+    setChatMessages(prev => [...prev, {role: 'ai', text: response}]);
+    setChatLoading(false);
+};
+
     // Try Gemini first, but if it fails, use the smart fallback
     try {
       const context = filtered.slice(0, 15);
