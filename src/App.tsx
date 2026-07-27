@@ -1,0 +1,239 @@
+import { useState, useEffect } from 'react';
+import { Shield, AlertTriangle, MapPin, Calendar, Filter, Sparkles, ExternalLink, X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import './App.css';
+
+interface Incident {
+  Date: string;
+  Region: string;
+  Type: string;
+  Nature: string;
+  Severity: string;
+  Title: string;
+  Summary: string;
+  Link: string;
+}
+
+const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+function App() {
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [filtered, setFiltered] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [regionFilter, setRegionFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [severityFilter, setSeverityFilter] = useState('All');
+  const [briefing, setBriefing] = useState('');
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState('');
+
+  const regions = ['All', 'KP', 'Balochistan', 'Punjab', 'Sindh', 'Gilgit-Baltistan', 'Azad Kashmir', 'Islamabad', 'Other'];
+  const types = ['All', 'Attack', 'Operation', 'Militancy', 'Protest', 'Diplomacy', 'Political', 'Other'];
+  const severities = ['All', 'Critical', 'High', 'Medium', 'Low'];
+
+  const fetchData = async () => {
+    try {
+      const cacheBuster = Date.now();
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1&cb=${cacheBuster}`;
+      const response = await fetch(url, { cache: 'no-store' });
+      const text = await response.text();
+      const json = JSON.parse(text.substring(47).slice(0, -2));
+      const cols: string[] = json.table.cols.map((c: any) => c.label);
+      const rows = json.table.rows || [];
+      const data = rows.map((row: any) => {
+        const obj: any = {};
+        row.c.forEach((cell: any, i: number) => {
+          obj[cols[i]] = cell ? (cell.v || '') : '';
+        });
+        return obj as Incident;
+      }).reverse();
+      setIncidents(data);
+      setFiltered(data);
+      setLastUpdated(new Date().toLocaleTimeString());
+      setLoading(false);
+    } catch (error) {
+      console.error('Error:', error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let result = incidents;
+    if (regionFilter !== 'All') result = result.filter(i => i.Region === regionFilter);
+    if (typeFilter !== 'All') result = result.filter(i => i.Type === typeFilter);
+    if (severityFilter !== 'All') result = result.filter(i => i.Severity === severityFilter);
+    setFiltered(result);
+  }, [regionFilter, typeFilter, severityFilter, incidents]);
+
+  const generateBriefing = async () => {
+    if (filtered.length === 0) return;
+    setBriefingLoading(true);
+    setShowBriefing(true);
+
+    const prompt = `You are a senior Pakistan security affairs analyst. Analyze these incidents and produce a strategic briefing (max 300 words) with: 1) Situation Overview 2) Key Actors 3) Regional Hotspots 4) Trend Analysis 5) Strategic Outlook. Be factual. Do not invent incidents.
+
+INCIDENTS:
+${JSON.stringify(filtered.slice(0, 15))}`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
+          })
+        }
+      );
+      const data = await res.json();
+      if (data.error) {
+        setBriefing('API Error: ' + data.error.message);
+      } else if (data.candidates?.[0]?.content?.parts?.[0]) {
+        setBriefing(data.candidates[0].content.parts[0].text);
+      } else {
+        setBriefing('Analysis unavailable.');
+      }
+    } catch (err: any) {
+      setBriefing('Network Error: ' + err.message);
+    }
+    setBriefingLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#94a3b8', background: '#0b1120' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid #1e293b', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p>Loading security incidents...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0b1120', color: '#e2e8f0', fontFamily: 'Segoe UI, sans-serif' }}>
+      <header style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <Shield style={{ width: '32px', height: '32px', color: '#3b82f6', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: 0 }}>Pakistan Security Monitor</h1>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0 0' }}>Real-time tracking of security incidents across Pakistan</p>
+        </div>
+        <button onClick={fetchData} style={{ background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+          <RefreshCw size={14} /> Refresh {lastUpdated && `(${lastUpdated})`}
+        </button>
+      </header>
+
+      <main style={{ maxWidth: '900px', margin: '0 auto', padding: '24px', width: '100%', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: '26px', fontWeight: 700, color: '#fff' }}>{incidents.length}</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px', display: 'block' }}>Total Incidents</span>
+          </div>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: '26px', fontWeight: 700, color: '#ef4444' }}>{incidents.filter(i => i.Severity === 'Critical').length}</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px', display: 'block' }}>Critical</span>
+          </div>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: '26px', fontWeight: 700, color: '#f97316' }}>{incidents.filter(i => i.Severity === 'High').length}</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px', display: 'block' }}>High Severity</span>
+          </div>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: '26px', fontWeight: 700, color: '#fff' }}>{new Set(incidents.map(i => i.Region)).size}</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px', display: 'block' }}>Regions</span>
+          </div>
+        </div>
+
+        <button onClick={generateBriefing} style={{ width: '100%', padding: '14px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+          <Sparkles size={18} />
+          Generate AI Strategic Briefing
+        </button>
+
+        {showBriefing && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '20px' }} onClick={() => setShowBriefing(false)}>
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '14px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid #334155' }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '17px', color: '#fff', margin: 0 }}><Sparkles size={20} /> AI Strategic Briefing</h2>
+                <button onClick={() => setShowBriefing(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}><X size={20} /></button>
+              </div>
+              <div style={{ padding: '20px' }}>
+                {briefingLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
+                    <div style={{ width: '24px', height: '24px', border: '2px solid #1e293b', borderTopColor: '#a855f7', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    <p>Gemini AI is analyzing incidents...</p>
+                  </div>
+                ) : (
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#cbd5e1', fontSize: '14px' }}>{briefing}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e293b', border: '1px solid #334155', padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <Filter size={16} />
+          <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)} style={{ background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', padding: '6px 10px', borderRadius: '6px', fontSize: '13px' }}>
+            {regions.map(r => <option key={r} value={r}>{r === 'All' ? 'All Regions' : r}</option>)}
+          </select>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', padding: '6px 10px', borderRadius: '6px', fontSize: '13px' }}>
+            {types.map(t => <option key={t} value={t}>{t === 'All' ? 'All Types' : t}</option>)}
+          </select>
+          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)} style={{ background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', padding: '6px 10px', borderRadius: '6px', fontSize: '13px' }}>
+            {severities.map(s => <option key={s} value={s}>{s === 'All' ? 'All Severities' : s}</option>)}
+          </select>
+          <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#64748b' }}>{filtered.length} shown</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filtered.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>No incidents match your filters.</div>}
+          
+          {filtered.map((incident, idx) => {
+            const isExpanded = expandedId === idx;
+            return (
+              <div key={idx} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '18px', display: 'block' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', background: incident.Severity === 'Critical' ? '#7f1d1d' : incident.Severity === 'High' ? '#7c2d12' : incident.Severity === 'Medium' ? '#713f12' : '#14532d', color: '#fff' }}>{incident.Severity}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', background: '#334155', color: '#cbd5e1' }}>{incident.Region}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', background: '#1e3a5f', color: '#93c5fd' }}>{incident.Type}</span>
+                  </div>
+                  <a href={incident.Link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 500 }}>
+                    Read Source <ExternalLink size={14} />
+                  </a>
+                </div>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#f1f5f9', marginBottom: '8px', lineHeight: 1.4 }}>{incident.Title}</h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '12px' }}>
+                  {isExpanded ? incident.Summary : (incident.Summary?.slice(0, 200) + (incident.Summary?.length > 200 ? '...' : ''))}
+                </p>
+                {incident.Summary?.length > 200 && (
+                  <button onClick={() => setExpandedId(isExpanded ? null : idx)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', padding: 0, marginBottom: '10px' }}>
+                    {isExpanded ? <>Show Less <ChevronUp size={14} /></> : <>Read Full Summary <ChevronDown size={14} /></>}
+                  </button>
+                )}
+                <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#64748b', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={12} /> {incident.Date}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={12} /> {incident.Region}</span>
+                  {incident.Severity === 'Critical' && <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={12} /> CRITICAL</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      <footer style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: '#475569', borderTop: '1px solid #1e293b' }}>
+        <p>Data: Dawn, The News, ARY, Tribune, Long War Journal & Google News | Powered by n8n + Gemini AI</p>
+        <p style={{ marginTop: '4px' }}>Auto-refreshes every 3 minutes. Last updated: {lastUpdated || 'Loading...'}</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
