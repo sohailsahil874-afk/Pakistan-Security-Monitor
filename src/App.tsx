@@ -15,7 +15,7 @@ interface Incident {
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
 // REPLACE THIS WITH YOUR REAL GEMINI KEY
-const GEMINI_API_KEY = 'AQ.Ab8RN6LIr6nPFTxi6YIvk96TuKVJgbu9NOrdCgEmrWputvF6Lw';
+const GEMINI_API_KEY = 'AIzaSyYourRealKeyHere';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -164,21 +164,49 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
     setBriefingLoading(false);
   };
 
-  const prompt = `You are a senior Pakistan security affairs analyst with deep knowledge of South Asian geopolitics, militancy, and counter-terrorism. 
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, {role: 'user', text: userMsg}]);
+    setChatInput('');
+    setChatLoading(true);
 
-You have access to the following CURRENT incident data from the last 7 days:
+    const context = filtered.slice(0, 15);
+    const history = chatMessages.map(m => `${m.role === 'user' ? 'User' : 'Analyst'}: ${m.text}`).join('\n');
+
+    const prompt = `You are a senior Pakistan security affairs analyst. You have access to the following incident data and previous conversation. Answer the user's follow-up question based ONLY on the provided data. Do not invent incidents.
+
+INCIDENTS DATA:
 ${JSON.stringify(context, null, 2)}
 
-Conversation so far:
+CONVERSATION HISTORY:
 ${history}
 
-User asks: ${userMsg}
+USER QUESTION: ${userMsg}
 
-INSTRUCTIONS:
-- If the question is about the CURRENT incidents, answer using the data above.
-- If the question asks for historical context, background, or analysis of groups (TTP, BLA, etc.), use your general knowledge BUT clearly label it as "Historical Context" vs "Current Data."
-- Be concise (3-4 sentences max). Use professional intelligence tone.
-- Never invent current incidents not in the data.`;
+Provide a concise, factual answer. If the question asks about history or context not in the data, say "Based on the available data, I cannot provide historical context beyond what's shown in these incidents."`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
+          })
+        }
+      );
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'I cannot answer that based on the available data.';
+      setChatMessages(prev => [...prev, {role: 'ai', text}]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, {role: 'ai', text: 'Sorry, I encountered an error processing your question.'}]);
+    }
+    setChatLoading(false);
+  };
+
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#94a3b8', background: '#0b1120' }}>
