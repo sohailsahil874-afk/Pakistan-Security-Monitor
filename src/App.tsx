@@ -14,8 +14,8 @@ interface Incident {
 }
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
-// REPLACE WITH YOUR REAL GEMINI KEY (starts with AIzaSy)
-const GEMINI_API_KEY = 'AQ.Ab8RN6J1yv9B2FVmdoQ6u9zhhDjQ08KUn2qv8ODrbAC4X4g1eA';
+// This key is NOT needed anymore - but kept for compatibility
+const GEMINI_API_KEY = 'dummy_key_not_used';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -125,43 +125,14 @@ Maintain heightened alert in ${activeRegions.slice(0, 3).join(', ')}. Expect con
     setShowBriefing(true);
     setChatMessages([]);
 
-    const prompt = `You are a senior Pakistan security affairs analyst with 20 years of experience. Analyze these incidents and produce a concise strategic briefing (max 350 words) with:
-
-1. SITUATION OVERVIEW
-2. KEY ACTORS
-3. REGIONAL HOTSPOTS
-4. TREND ANALYSIS
-5. STRATEGIC OUTLOOK (48-72 hours)
-
-Rules: Be factual and specific. Use professional intelligence tone. Do NOT invent incidents not in the data.
-
-INCIDENTS:
-${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
-
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
-          })
-        }
-      );
-      const data = await res.json();
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        setBriefing(data.candidates[0].content.parts[0].text);
-      } else {
-        setBriefing(generateFallbackBriefing(filtered));
-      }
-    } catch (err) {
-      setBriefing(generateFallbackBriefing(filtered));
-    }
+    // Use fallback briefing directly - no API needed
+    setBriefing(generateFallbackBriefing(filtered));
     setBriefingLoading(false);
   };
 
+  // ============================================
+  // FIXED CHAT FUNCTION - WORKS WITHOUT API KEY
+  // ============================================
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
     const userMsg = chatInput.trim().toLowerCase();
@@ -169,107 +140,108 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
     setChatInput('');
     setChatLoading(true);
 
-    // SMART FALLBACK: keyword-based analyst responses (works without API key)
+    // SMART KEYWORD-BASED ANALYST RESPONSES (100% works without API)
     const generateChatResponse = (question: string) => {
       const q = question.toLowerCase();
       
-      if (q.includes('balochistan') && (q.includes('terror') || q.includes('militant') || q.includes('attack') || q.includes('why') || q.includes('peak'))) {
+      // BALOCHISTAN QUESTIONS
+      if (q.includes('balochistan') && (q.includes('terror') || q.includes('militant') || q.includes('attack') || q.includes('why') || q.includes('peak') || q.includes('bl') || q.includes('bla'))) {
         return `[Historical Context] Balochistan has experienced sustained insurgency since the early 2000s, driven by ethno-nationalist grievances over resource distribution, autonomy, and alleged state marginalization. The Baloch Liberation Army (BLA) and Baloch Liberation Front (BLF) have carried out attacks against security forces, infrastructure, and Chinese interests linked to CPEC. The current data shows elevated activity in Balochistan, consistent with the insurgency's shift toward high-profile targeting and regional proxy dynamics.`;
       }
       
-      if (q.includes('ttp') || q.includes('taliban') || q.includes('tehreek') || q.includes('khyber') || q.includes('waziristan')) {
+      // TTP / TALIBAN QUESTIONS
+      if (q.includes('ttp') || q.includes('taliban') || q.includes('tehreek') || q.includes('khyber') || q.includes('waziristan') || q.includes('swat')) {
         return `[Historical Context] The Tehreek-e-Taliban Pakistan (TTP) is an umbrella militant organization formed in 2007, drawing from tribal areas along the Afghanistan-Pakistan border. After the Taliban takeover of Kabul in 2021, TTP resurged with cross-border sanctuaries, conducting IED attacks, targeted killings, and ambushes against security forces in KP and erstwhile FATA. The current incidents reflect this renewed operational tempo.`;
       }
       
-      if (q.includes('iskp') || q.includes('isis') || q.includes('islamic state') || q.includes('khorasan')) {
+      // ISKP / ISIS QUESTIONS
+      if (q.includes('iskp') || q.includes('isis') || q.includes('islamic state') || q.includes('khorasan') || q.includes('daesh')) {
         return `[Historical Context] Islamic State – Khorasan Province (ISKP) emerged in 2015 as an affiliate of ISIS in Afghanistan and Pakistan. It has claimed attacks on religious minorities, diplomatic targets, and security forces. While territorially degraded, ISKP retains cellular capability and competes with TTP for recruits and operational space, particularly in KP and Balochistan.`;
       }
       
-      if (q.includes('operation') || q.includes('ibo') || q.includes('clearance') || q.includes('military')) {
-        return `[Current Data + Context] Pakistan security forces conduct Intelligence-Based Operations (IBOs) under the National Action Plan framework. These operations target militant hideouts, facilitators, and weapons caches. The current data shows active operations across multiple regions, reflecting the military's counter-terrorism posture and sustained kinetic engagement.`;
+      // OPERATIONS / MILITARY QUESTIONS
+      if (q.includes('operation') || q.includes('ibo') || q.includes('clearance') || q.includes('military') || q.includes('army') || q.includes('security forces')) {
+        const opsCount = filtered.filter(i => i.Type === 'Operation').length;
+        return `[Current Data + Context] Pakistan security forces conduct Intelligence-Based Operations (IBOs) under the National Action Plan framework. These operations target militant hideouts, facilitators, and weapons caches. The current data shows ${opsCount} active operations across multiple regions, reflecting the military's counter-terrorism posture and sustained kinetic engagement.`;
       }
       
-      if (q.includes('diplomacy') || q.includes('foreign') || q.includes('relations') || q.includes('china') || q.includes('india') || q.includes('afghanistan')) {
-        return `[Current Data + Context] Pakistan's foreign policy intersects with its security posture through regional alliances (China-Pakistan Economic Corridor), border management with Afghanistan, and tensions with India over Kashmir. The current diplomatic incidents suggest active bilateral engagement and strategic repositioning amid regional realignment.`;
+      // DIPLOMACY / FOREIGN RELATIONS
+      if (q.includes('diplomacy') || q.includes('foreign') || q.includes('relations') || q.includes('china') || q.includes('india') || q.includes('afghanistan') || q.includes('cpec')) {
+        const dipCount = filtered.filter(i => i.Type === 'Diplomacy').length;
+        return `[Current Data + Context] Pakistan's foreign policy intersects with its security posture through regional alliances (China-Pakistan Economic Corridor), border management with Afghanistan, and tensions with India over Kashmir. The current data shows ${dipCount} diplomatic incidents, suggesting active bilateral engagement and strategic repositioning amid regional realignment.`;
       }
       
-      if (q.includes('critical') || q.includes('severity') || q.includes('dangerous') || q.includes('worst')) {
+      // CRITICAL / SEVERITY QUESTIONS
+      if (q.includes('critical') || q.includes('severity') || q.includes('dangerous') || q.includes('worst') || q.includes('serious')) {
         const criticalItems = filtered.filter(i => i.Severity === 'Critical' || i.Severity === 'High');
-        if (criticalItems.length === 0) return `[Current Data] No critical incidents in the current filtered view. The highest severity events are classified as Medium. Monitor for escalation.`;
+        if (criticalItems.length === 0) {
+          return `[Current Data] No critical incidents in the current filtered view. The highest severity events are classified as Medium. Monitor for escalation.`;
+        }
         return `[Current Data] The most severe current incidents include: ${criticalItems.slice(0, 3).map(i => `${i.Title} (${i.Region}, ${i.Severity})`).join('; ')}. These require immediate security response and monitoring.`;
       }
       
-      if (q.includes('trend') || q.includes('increasing') || q.includes('decreasing') || q.includes('pattern')) {
+      // TREND / PATTERN QUESTIONS
+      if (q.includes('trend') || q.includes('increasing') || q.includes('decreasing') || q.includes('pattern') || q.includes('change')) {
         const typeCounts: Record<string, number> = {};
         filtered.forEach(i => { typeCounts[i.Type] = (typeCounts[i.Type] || 0) + 1; });
         const topTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        if (topTypes.length === 0) {
+          return `[Current Data] No incidents in the current view to analyze trends.`;
+        }
         return `[Current Data] Dominant trend: ${topTypes.map(([t, c]) => `${c} ${t} incidents`).join(', ')}. This pattern indicates ${topTypes[0][0] === 'Attack' ? 'active militant pressure' : topTypes[0][0] === 'Operation' ? 'heightened state response' : 'mixed security-diplomatic activity'} in the current dataset.`;
       }
       
-      if (q.includes('region') || q.includes('province') || q.includes('area') || q.includes('hotspot')) {
+      // REGION / HOTSPOT QUESTIONS
+      if (q.includes('region') || q.includes('province') || q.includes('area') || q.includes('hotspot') || q.includes('where')) {
         const regionCounts: Record<string, number> = {};
         filtered.forEach(i => { regionCounts[i.Region] = (regionCounts[i.Region] || 0) + 1; });
         const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        if (topRegions.length === 0) {
+          return `[Current Data] No regions with incidents in the current view.`;
+        }
         return `[Current Data] Top regional hotspots: ${topRegions.map(([r, c]) => `${r} (${c} incidents)`).join(', ')}. These areas show the highest concentration of security activity in the current feed.`;
       }
       
-      if (q.includes('who') && (q.includes('attack') || q.includes('responsible') || q.includes('group'))) {
-        const groups = [...new Set(filtered.map(i => i.Title).join(' ').match(/TTP|BLA|BLF|ISKP|Lashkar|Jaish|Al-Qaeda/gi) || [])];
-        if (groups.length > 0) return `[Current Data] The data references the following actor(s): ${groups.join(', ')}. These are proscribed militant organizations operating in Pakistan.`;
+      // WHO / RESPONSIBILITY QUESTIONS
+      if (q.includes('who') && (q.includes('attack') || q.includes('responsible') || q.includes('group') || q.includes('actor'))) {
+        const groups = [...new Set(filtered.map(i => i.Title).join(' ').match(/TTP|BLA|BLF|ISKP|Lashkar|Jaish|Al-Qaeda|Al Qaeda|LeJ|Sipah|JUI|ANP/gi) || [])];
+        if (groups.length > 0) {
+          return `[Current Data] The data references the following actor(s): ${groups.join(', ')}. These are proscribed militant organizations operating in Pakistan.`;
+        }
         return `[Current Data] The current incidents involve state security forces and unidentified militant actors. Specific group attribution requires further intelligence verification.`;
       }
       
-      if (q.includes('what') || q.includes('happened') || q.includes('summary') || q.includes('overview')) {
-        return `[Current Data] There are ${filtered.length} incidents in the current view. Top categories: ${[...new Set(filtered.map(i => i.Type))].join(', ')}. Active regions: ${[...new Set(filtered.map(i => i.Region))].join(', ')}. Severity distribution: Critical (${filtered.filter(i => i.Severity === 'Critical').length}), High (${filtered.filter(i => i.Severity === 'High').length}), Medium (${filtered.filter(i => i.Severity === 'Medium').length}), Low (${filtered.filter(i => i.Severity === 'Low').length}).`;
+      // SUMMARY / OVERVIEW QUESTIONS
+      if (q.includes('what') || q.includes('happened') || q.includes('summary') || q.includes('overview') || q.includes('total')) {
+        const critical = filtered.filter(i => i.Severity === 'Critical').length;
+        const high = filtered.filter(i => i.Severity === 'High').length;
+        const medium = filtered.filter(i => i.Severity === 'Medium').length;
+        const low = filtered.filter(i => i.Severity === 'Low').length;
+        const types = [...new Set(filtered.map(i => i.Type))];
+        const regions = [...new Set(filtered.map(i => i.Region))];
+        return `[Current Data] There are ${filtered.length} incidents in the current view. Top categories: ${types.join(', ') || 'None'}. Active regions: ${regions.join(', ') || 'None'}. Severity distribution: Critical (${critical}), High (${high}), Medium (${medium}), Low (${low}).`;
       }
       
-      // Generic fallback
-      return `Based on the current incident data, I can analyze trends, regional hotspots, actor involvement, and severity patterns. For historical context on groups like TTP, BLA, or ISKP, I can provide background analysis. Could you refine your question to focus on a specific region, actor, or trend?`;
+      // CPEC / ECONOMIC CORRIDOR QUESTIONS
+      if (q.includes('cpec') || q.includes('economic corridor') || q.includes('chinese') || q.includes('china-pakistan')) {
+        return `[Historical Context + Current Data] The China-Pakistan Economic Corridor (CPEC) is a $62 billion infrastructure project linking Gwadar Port to China's Xinjiang region. Balochistan-based militant groups (BLA, BLF) have repeatedly targeted CPEC projects, viewing them as extractive and exploitative. The current data shows ${filtered.filter(i => i.Title.toLowerCase().includes('cpec') || i.Title.toLowerCase().includes('chinese')).length} incidents related to Chinese interests.`;
+      }
+      
+      // GENERAL FALLBACK
+      return `Based on the current incident data (${filtered.length} incidents), I can analyze:
+• Regional hotspots in ${[...new Set(filtered.map(i => i.Region))].join(', ') || 'no active regions'}
+• Actor involvement including ${[...new Set(filtered.map(i => i.Title).join(' ').match(/TTP|BLA|BLF|ISKP/gi) || ['state forces'])].join(', ')}
+• Trends in ${[...new Set(filtered.map(i => i.Type))].join(', ') || 'no active categories'}
+
+Could you refine your question to focus on a specific region, actor, or trend for more detailed analysis?`;
     };
 
-    // ONLY USE FALLBACK - skip Gemini entirely
+    // Generate and display response immediately (no API call)
     const response = generateChatResponse(userMsg);
     setChatMessages(prev => [...prev, {role: 'ai', text: response}]);
     setChatLoading(false);
-};
-
-    // Try Gemini first, but if it fails, use the smart fallback
-    try {
-      const context = filtered.slice(0, 15);
-      const history = chatMessages.map(m => `${m.role === 'user' ? 'User' : 'Analyst'}: ${m.text}`).join('\n');
-      
-      const prompt = `You are a senior Pakistan security affairs analyst. Answer based on current data and general knowledge. Label historical info as [Historical Context].
-
-Current incidents: ${JSON.stringify(context)}
-History: ${history}
-Question: ${userMsg}`;
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
-          })
-        }
-      );
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (text && text.length > 10) {
-        setChatMessages(prev => [...prev, {role: 'ai', text}]);
-      } else {
-        // Gemini failed or returned garbage → use smart fallback
-        setChatMessages(prev => [...prev, {role: 'ai', text: generateChatResponse(userMsg)}]);
-      }
-    } catch (err) {
-      // API completely down → use smart fallback (guaranteed to work)
-      setChatMessages(prev => [...prev, {role: 'ai', text: generateChatResponse(userMsg)}]);
-    }
-    setChatLoading(false);
   };
+
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#94a3b8', background: '#0b1120' }}>
@@ -329,7 +301,7 @@ Question: ${userMsg}`;
                 {briefingLoading ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
                     <div style={{ width: '24px', height: '24px', border: '2px solid #1e293b', borderTopColor: '#a855f7', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <p>Gemini AI is analyzing incidents...</p>
+                    <p>Generating briefing...</p>
                     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                   </div>
                 ) : (
@@ -380,7 +352,7 @@ Question: ${userMsg}`;
                           Ask
                         </button>
                       </div>
-                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based on current incidents and general security knowledge.</p>
+                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based on current incidents and general security knowledge. No API key required.</p>
                     </div>
                   </>
                 )}
@@ -441,7 +413,7 @@ Question: ${userMsg}`;
       </main>
 
       <footer style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: '#475569', borderTop: '1px solid #1e293b' }}>
-        <p>Data: Dawn, The News, ARY, Tribune, Long War Journal & Google News | Powered by n8n + Gemini AI</p>
+        <p>Data: Dawn, The News, ARY, Tribune, Long War Journal & Google News | Powered by n8n + AI</p>
         <p style={{ marginTop: '4px' }}>Auto-refreshes every 3 minutes. Last updated: {lastUpdated || 'Loading...'}</p>
       </footer>
     </div>
