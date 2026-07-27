@@ -15,7 +15,7 @@ interface Incident {
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
 // PASTE YOUR GEMINI KEY HERE (it's already in your .env on GitHub, so this is fine for now)
-const GEMINI_API_KEY = 'PASTE_YOUR_AIza_KEY_HERE';
+const GEMINI_API_KEY = 'AQ.Ab8RN6LTliIJlkGRkVhUgVrfe6rWsbQFkie3H2o-rt5m__nD1g';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
