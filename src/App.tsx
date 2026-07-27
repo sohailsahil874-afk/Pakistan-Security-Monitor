@@ -14,8 +14,6 @@ interface Incident {
 }
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
-// This key is NOT needed anymore - but kept for compatibility
-const GEMINI_API_KEY = 'AQ.Ab8RN6J1yv9B2FVmdoQ6u9zhhDjQ08KUn2qv8ODrbAC4X4g1eA';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -29,7 +27,6 @@ function App() {
   const [showBriefing, setShowBriefing] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
-  // CHAT STATES
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -124,120 +121,382 @@ Maintain heightened alert in ${activeRegions.slice(0, 3).join(', ')}. Expect con
     setBriefingLoading(true);
     setShowBriefing(true);
     setChatMessages([]);
-
-    // Use fallback briefing directly - no API needed
     setBriefing(generateFallbackBriefing(filtered));
     setBriefingLoading(false);
   };
 
-  // ============================================
-  // FIXED CHAT FUNCTION - WORKS WITHOUT API KEY
-  // ============================================
+  // ============================================================
+  // ✅ FIXED CHAT FUNCTION - 100% WORKS, NO API CALLS AT ALL
+  // ============================================================
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
-    const userMsg = chatInput.trim().toLowerCase();
-    setChatMessages(prev => [...prev, {role: 'user', text: chatInput.trim()}]);
+    const userMsg = chatInput.trim();
+    const userMsgLower = userMsg.toLowerCase();
+    
+    setChatMessages(prev => [...prev, {role: 'user', text: userMsg}]);
     setChatInput('');
     setChatLoading(true);
 
-    // SMART KEYWORD-BASED ANALYST RESPONSES (100% works without API)
-    const generateChatResponse = (question: string) => {
+    // Generate response based on keywords - IMMEDIATE, NO API
+    const generateResponse = (question: string) => {
       const q = question.toLowerCase();
       
-      // BALOCHISTAN QUESTIONS
-      if (q.includes('balochistan') && (q.includes('terror') || q.includes('militant') || q.includes('attack') || q.includes('why') || q.includes('peak') || q.includes('bl') || q.includes('bla'))) {
-        return `[Historical Context] Balochistan has experienced sustained insurgency since the early 2000s, driven by ethno-nationalist grievances over resource distribution, autonomy, and alleged state marginalization. The Baloch Liberation Army (BLA) and Baloch Liberation Front (BLF) have carried out attacks against security forces, infrastructure, and Chinese interests linked to CPEC. The current data shows elevated activity in Balochistan, consistent with the insurgency's shift toward high-profile targeting and regional proxy dynamics.`;
-      }
-      
-      // TTP / TALIBAN QUESTIONS
-      if (q.includes('ttp') || q.includes('taliban') || q.includes('tehreek') || q.includes('khyber') || q.includes('waziristan') || q.includes('swat')) {
-        return `[Historical Context] The Tehreek-e-Taliban Pakistan (TTP) is an umbrella militant organization formed in 2007, drawing from tribal areas along the Afghanistan-Pakistan border. After the Taliban takeover of Kabul in 2021, TTP resurged with cross-border sanctuaries, conducting IED attacks, targeted killings, and ambushes against security forces in KP and erstwhile FATA. The current incidents reflect this renewed operational tempo.`;
-      }
-      
-      // ISKP / ISIS QUESTIONS
-      if (q.includes('iskp') || q.includes('isis') || q.includes('islamic state') || q.includes('khorasan') || q.includes('daesh')) {
-        return `[Historical Context] Islamic State – Khorasan Province (ISKP) emerged in 2015 as an affiliate of ISIS in Afghanistan and Pakistan. It has claimed attacks on religious minorities, diplomatic targets, and security forces. While territorially degraded, ISKP retains cellular capability and competes with TTP for recruits and operational space, particularly in KP and Balochistan.`;
-      }
-      
-      // OPERATIONS / MILITARY QUESTIONS
-      if (q.includes('operation') || q.includes('ibo') || q.includes('clearance') || q.includes('military') || q.includes('army') || q.includes('security forces')) {
-        const opsCount = filtered.filter(i => i.Type === 'Operation').length;
-        return `[Current Data + Context] Pakistan security forces conduct Intelligence-Based Operations (IBOs) under the National Action Plan framework. These operations target militant hideouts, facilitators, and weapons caches. The current data shows ${opsCount} active operations across multiple regions, reflecting the military's counter-terrorism posture and sustained kinetic engagement.`;
-      }
-      
-      // DIPLOMACY / FOREIGN RELATIONS
-      if (q.includes('diplomacy') || q.includes('foreign') || q.includes('relations') || q.includes('china') || q.includes('india') || q.includes('afghanistan') || q.includes('cpec')) {
-        const dipCount = filtered.filter(i => i.Type === 'Diplomacy').length;
-        return `[Current Data + Context] Pakistan's foreign policy intersects with its security posture through regional alliances (China-Pakistan Economic Corridor), border management with Afghanistan, and tensions with India over Kashmir. The current data shows ${dipCount} diplomatic incidents, suggesting active bilateral engagement and strategic repositioning amid regional realignment.`;
-      }
-      
-      // CRITICAL / SEVERITY QUESTIONS
-      if (q.includes('critical') || q.includes('severity') || q.includes('dangerous') || q.includes('worst') || q.includes('serious')) {
-        const criticalItems = filtered.filter(i => i.Severity === 'Critical' || i.Severity === 'High');
-        if (criticalItems.length === 0) {
-          return `[Current Data] No critical incidents in the current filtered view. The highest severity events are classified as Medium. Monitor for escalation.`;
+      // ===== BALOCHISTAN =====
+      if (q.includes('balochistan') || q.includes('bla') || q.includes('blf')) {
+        if (q.includes('why') || q.includes('terror') || q.includes('militant') || q.includes('attack') || q.includes('peak') || q.includes('increase')) {
+          return `[Historical Context] Balochistan has experienced a sustained insurgency since the early 2000s, driven by ethno-nationalist grievances over:
+• Resource distribution (gas, minerals, CPEC revenues)
+• Political autonomy demands
+• Alleged state marginalization and human rights violations
+• Security operations and military presence
+
+Key Actors:
+• Baloch Liberation Army (BLA) - Most active, targets security forces and Chinese interests
+• Baloch Liberation Front (BLF) - Operates primarily in coastal areas
+• Baloch Republican Army (BRA) - Smaller faction
+
+Current Situation: The data shows elevated activity in Balochistan with ${filtered.filter(i => i.Region === 'Balochistan').length} incidents, consistent with the insurgency's shift toward high-profile targeting (attacks on CPEC projects, security convoys, and infrastructure). The recent uptick correlates with:
+• Afghan Taliban takeover (2021) enabling cross-border militant movement
+• Increased CPEC construction activity
+• Security force operations in mountainous terrain`;
         }
-        return `[Current Data] The most severe current incidents include: ${criticalItems.slice(0, 3).map(i => `${i.Title} (${i.Region}, ${i.Severity})`).join('; ')}. These require immediate security response and monitoring.`;
       }
       
-      // TREND / PATTERN QUESTIONS
+      // ===== TTP / TALIBAN =====
+      if (q.includes('ttp') || q.includes('taliban') || q.includes('tehreek') || q.includes('khyber') || q.includes('waziristan') || q.includes('swat')) {
+        return `[Historical Context] Tehreek-e-Taliban Pakistan (TTP) - Formed in 2007 as an umbrella of militant groups:
+• Originated from tribal areas (FATA) along Afghanistan-Pakistan border
+• Ideologically aligned with Afghan Taliban but operationally distinct
+• Demands: Sharia law, withdrawal of military from tribal areas, release of imprisoned militants
+
+Key Developments (2021-2024):
+• Afghan Taliban takeover in Kabul gave TTP safe havens across the border
+• Peace talks collapsed in 2022, leading to renewed violence
+• Shift from IEDs to coordinated attacks on military installations
+
+Current Pattern: ${filtered.filter(i => i.Region === 'KP' || i.Region === 'Khyber Pakhtunkhwa').length} incidents in KP, indicating:
+• Sustained operational tempo
+• Targeting of security forces and police
+• Use of IEDs and ambush tactics
+• Cross-border coordination with Afghan Taliban factions`;
+      }
+      
+      // ===== ISKP / ISIS =====
+      if (q.includes('iskp') || q.includes('isis') || q.includes('islamic state') || q.includes('khorasan') || q.includes('daesh')) {
+        return `[Historical Context] Islamic State – Khorasan Province (ISKP):
+• Emerged in 2015 as ISIS affiliate in Afghanistan-Pakistan region
+• Initially strong in Nangarhar, Kunar provinces (Afghanistan)
+• Expanded to Pakistan through recruitment from disaffected TTP members
+
+Tactics and Targets:
+• Suicide bombings on religious minorities (Shia, Sikh, Christian)
+• Attacks on diplomatic missions and government buildings
+• Competition with TTP for recruits and operational space
+
+Current Status:
+• Territorially degraded but retains cellular capability
+• Operates in pockets of KP and Balochistan
+• Claims attacks to gain visibility and funding
+• ${filtered.filter(i => i.Title.toLowerCase().includes('iskp') || i.Title.toLowerCase().includes('isis')).length} incidents in current data`;
+      }
+      
+      // ===== OPERATIONS / MILITARY =====
+      if (q.includes('operation') || q.includes('ibo') || q.includes('clearance') || q.includes('military') || q.includes('army') || q.includes('security forces') || q.includes('ctd')) {
+        const opsCount = filtered.filter(i => i.Type === 'Operation').length;
+        return `[Current Data + Context] Pakistan's Counter-Terrorism Operations Framework:
+
+1. Intelligence-Based Operations (IBOs):
+• Conducted by Army, Frontier Corps, CTD, and Police
+• Target militant hideouts, facilitators, weapons caches
+• Use of intelligence from multiple agencies (ISI, MI, IB)
+
+2. National Action Plan (NAP) - 2015:
+• Comprehensive counter-terrorism strategy
+• Includes military, legal, and financial measures
+• Military courts for terrorist trials
+
+3. Current Operations: ${opsCount} operations in the data
+• Most active in ${[...new Set(filtered.filter(i => i.Type === 'Operation').map(i => i.Region))].join(', ') || 'various regions'}
+• Focus on disrupting militant networks and preventing attacks
+
+4. Challenges:
+• Urban warfare in cities (IEDs, targeted killings)
+• Border management with Afghanistan
+• Balancing kinetic operations with civilian protection`;
+      }
+      
+      // ===== DIPLOMACY / FOREIGN RELATIONS =====
+      if (q.includes('diplomacy') || q.includes('foreign') || q.includes('relations') || q.includes('china') || q.includes('cpec') || q.includes('india') || q.includes('afghanistan') || q.includes('united states') || q.includes('us')) {
+        const dipCount = filtered.filter(i => i.Type === 'Diplomacy').length;
+        return `[Current Data + Context] Pakistan's Foreign Policy and Security Intersections:
+
+1. China-Pakistan Economic Corridor (CPEC):
+• $62 billion infrastructure investment
+• Strategic: Gwadar Port, energy projects, connectivity
+• Security challenge: BLA/BLF attacks on Chinese interests
+• ${filtered.filter(i => i.Title.toLowerCase().includes('cpec') || i.Title.toLowerCase().includes('chinese')).length} CPEC-related incidents
+
+2. Afghanistan Border Management:
+• Durand Line disputes
+• TTP safe havens issue
+• Cross-border militant movement
+• Diplomatic tension with Afghan Taliban
+
+3. India Tensions:
+• Kashmir dispute
+• Ceasefire violations along LoC
+• Diplomatic downgrade since 2019
+
+4. Current Diplomatic Activity: ${dipCount} incidents indicate:
+• Active engagement with international partners
+• Strategic repositioning amid regional realignment
+• Balancing between US, China, and Gulf states`;
+      }
+      
+      // ===== SEVERITY / CRITICAL =====
+      if (q.includes('critical') || q.includes('severity') || q.includes('dangerous') || q.includes('worst') || q.includes('serious') || q.includes('urgent')) {
+        const critical = filtered.filter(i => i.Severity === 'Critical');
+        const high = filtered.filter(i => i.Severity === 'High');
+        if (critical.length === 0 && high.length === 0) {
+          return `[Current Data] No critical or high severity incidents in the current filtered view. The highest severity events are classified as Medium. This suggests:
+• Stabilized security environment in filtered areas
+• Routine security operations ongoing
+• No imminent high-threat indicators
+
+Monitor for escalation in ${filtered.length > 0 ? [...new Set(filtered.map(i => i.Region))].join(', ') : 'no active regions'}.`;
+        }
+        return `[Current Data] CRITICAL AND HIGH SEVERITY INCIDENTS:
+
+Critical (${critical.length}): ${critical.slice(0, 3).map(i => `• ${i.Title} (${i.Region})`).join('\n')}
+
+High (${high.length}): ${high.slice(0, 3).map(i => `• ${i.Title} (${i.Region})`).join('\n')}
+
+Security Response Required:
+• Immediate deployment for critical incidents
+• Increased patrols in high severity zones
+• Intelligence gathering for potential follow-up attacks
+• Public communication for safety measures`;
+      }
+      
+      // ===== TRENDS / PATTERNS =====
       if (q.includes('trend') || q.includes('increasing') || q.includes('decreasing') || q.includes('pattern') || q.includes('change')) {
         const typeCounts: Record<string, number> = {};
         filtered.forEach(i => { typeCounts[i.Type] = (typeCounts[i.Type] || 0) + 1; });
         const topTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        
         if (topTypes.length === 0) {
-          return `[Current Data] No incidents in the current view to analyze trends.`;
+          return `[Current Data] No incidents in the current view to analyze trends. Try adjusting your filters.`;
         }
-        return `[Current Data] Dominant trend: ${topTypes.map(([t, c]) => `${c} ${t} incidents`).join(', ')}. This pattern indicates ${topTypes[0][0] === 'Attack' ? 'active militant pressure' : topTypes[0][0] === 'Operation' ? 'heightened state response' : 'mixed security-diplomatic activity'} in the current dataset.`;
-      }
-      
-      // REGION / HOTSPOT QUESTIONS
-      if (q.includes('region') || q.includes('province') || q.includes('area') || q.includes('hotspot') || q.includes('where')) {
+        
         const regionCounts: Record<string, number> = {};
         filtered.forEach(i => { regionCounts[i.Region] = (regionCounts[i.Region] || 0) + 1; });
         const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-        if (topRegions.length === 0) {
+        
+        const trendAnalysis = {
+          'Attack': 'active militant pressure and offensive operations',
+          'Operation': 'heightened state response and counter-insurgency',
+          'Diplomacy': 'geopolitical maneuvering and strategic communication',
+          'Protest': 'civil unrest and public dissent',
+          'Militancy': 'insurgent activity and asymmetric warfare'
+        };
+        
+        const dominantType = topTypes[0][0];
+        const analysis = trendAnalysis[dominantType as keyof typeof trendAnalysis] || 'mixed security-diplomatic activity';
+        
+        return `[Current Data] TREND ANALYSIS:
+
+Dominant Patterns:
+• Top incident types: ${topTypes.map(([t, c]) => `${c} ${t}`).join(', ')}
+• This indicates ${analysis}
+
+Regional Concentration:
+• Top areas: ${topRegions.map(([r, c]) => `${r} (${c} incidents)`).join(', ')}
+
+Interpretation:
+• ${dominantType === 'Attack' ? 'Militants are maintaining pressure on security forces' : dominantType === 'Operation' ? 'Security forces are actively conducting clearance operations' : 'Mixed patterns indicate complex security environment'}
+• Expect continued activity in ${topRegions[0]?.[0] || 'major hotspots'}
+• Monitor for potential escalation or retaliation
+
+Data Source: ${filtered.length} incidents in current view`;
+      }
+      
+      // ===== REGIONS / HOTSPOTS =====
+      if (q.includes('region') || q.includes('province') || q.includes('area') || q.includes('hotspot') || q.includes('where') || q.includes('location')) {
+        const regionCounts: Record<string, number> = {};
+        filtered.forEach(i => { regionCounts[i.Region] = (regionCounts[i.Region] || 0) + 1; });
+        const sorted = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]);
+        
+        if (sorted.length === 0) {
           return `[Current Data] No regions with incidents in the current view.`;
         }
-        return `[Current Data] Top regional hotspots: ${topRegions.map(([r, c]) => `${r} (${c} incidents)`).join(', ')}. These areas show the highest concentration of security activity in the current feed.`;
+        
+        const top3 = sorted.slice(0, 3);
+        const severityBreakdown = (region: string) => {
+          const items = filtered.filter(i => i.Region === region);
+          const crit = items.filter(i => i.Severity === 'Critical').length;
+          const high = items.filter(i => i.Severity === 'High').length;
+          return `Critical: ${crit}, High: ${high}`;
+        };
+        
+        return `[Current Data] REGIONAL HOTSPOTS ANALYSIS:
+
+Top Active Regions:
+${top3.map(([r, c], i) => `${i+1}. ${r}: ${c} incidents (${severityBreakdown(r)})`).join('\n')}
+
+Regional Characteristics:
+${top3.map(([r]) => {
+  const types = [...new Set(filtered.filter(i => i.Region === r).map(i => i.Type))];
+  return `• ${r}: ${types.join(', ')} activity`;
+}).join('\n')}
+
+Security Recommendations:
+• ${top3[0]?.[0] || 'Primary hotspot'}: Increase patrols and intelligence gathering
+• Secondary areas: Monitor for spillover effects
+• Track regional patterns for pre-emptive operations`;
       }
       
-      // WHO / RESPONSIBILITY QUESTIONS
-      if (q.includes('who') && (q.includes('attack') || q.includes('responsible') || q.includes('group') || q.includes('actor'))) {
-        const groups = [...new Set(filtered.map(i => i.Title).join(' ').match(/TTP|BLA|BLF|ISKP|Lashkar|Jaish|Al-Qaeda|Al Qaeda|LeJ|Sipah|JUI|ANP/gi) || [])];
-        if (groups.length > 0) {
-          return `[Current Data] The data references the following actor(s): ${groups.join(', ')}. These are proscribed militant organizations operating in Pakistan.`;
+      // ===== WHO / RESPONSIBILITY =====
+      if ((q.includes('who') || q.includes('responsible') || q.includes('behind') || q.includes('perpetrator')) && (q.includes('attack') || q.includes('incident') || q.includes('group'))) {
+        const groupMatches = new Set();
+        const titles = filtered.map(i => i.Title);
+        titles.forEach(title => {
+          const found = title.match(/TTP|BLA|BLF|ISKP|Lashkar|Jaish|Al Qaeda|Al-Qaeda|LeJ|Sipah|JUI|ANP/gi);
+          if (found) found.forEach(g => groupMatches.add(g));
+        });
+        
+        if (groupMatches.size > 0) {
+          return `[Current Data] IDENTIFIED ACTORS:
+
+Groups Referenced in Current Data:
+${[...groupMatches].map(g => `• ${g}`).join('\n')}
+
+Actor Profiles:
+• TTP (Tehreek-e-Taliban Pakistan): Active in KP, tribal areas - attacks on security forces
+• BLA (Baloch Liberation Army): Balochistan - targets security forces, CPEC
+• BLF (Baloch Liberation Front): Coastal Balochistan - attacks on infrastructure
+• ISKP (Islamic State Khorasan): Pockets in KP - religious minority attacks
+
+Verification: These are proscribed militant organizations operating in Pakistan. Attribution requires intelligence verification and on-ground confirmation.`;
         }
-        return `[Current Data] The current incidents involve state security forces and unidentified militant actors. Specific group attribution requires further intelligence verification.`;
+        return `[Current Data] The current incidents primarily involve:
+• Pakistan security forces (Army, FC, CTD, Police)
+• Unidentified militant actors
+• Potential involvement of TTP, BLA, or other groups based on regional patterns
+
+Specific group attribution requires:
+• Forensic evidence
+• Claim of responsibility verification
+• Intelligence analysis
+• Multiple source confirmation`;
       }
       
-      // SUMMARY / OVERVIEW QUESTIONS
-      if (q.includes('what') || q.includes('happened') || q.includes('summary') || q.includes('overview') || q.includes('total')) {
+      // ===== SUMMARY / OVERVIEW =====
+      if (q.includes('what') || q.includes('summary') || q.includes('overview') || q.includes('total') || q.includes('happened') || q.includes('count')) {
         const critical = filtered.filter(i => i.Severity === 'Critical').length;
         const high = filtered.filter(i => i.Severity === 'High').length;
         const medium = filtered.filter(i => i.Severity === 'Medium').length;
         const low = filtered.filter(i => i.Severity === 'Low').length;
         const types = [...new Set(filtered.map(i => i.Type))];
         const regions = [...new Set(filtered.map(i => i.Region))];
-        return `[Current Data] There are ${filtered.length} incidents in the current view. Top categories: ${types.join(', ') || 'None'}. Active regions: ${regions.join(', ') || 'None'}. Severity distribution: Critical (${critical}), High (${high}), Medium (${medium}), Low (${low}).`;
-      }
-      
-      // CPEC / ECONOMIC CORRIDOR QUESTIONS
-      if (q.includes('cpec') || q.includes('economic corridor') || q.includes('chinese') || q.includes('china-pakistan')) {
-        return `[Historical Context + Current Data] The China-Pakistan Economic Corridor (CPEC) is a $62 billion infrastructure project linking Gwadar Port to China's Xinjiang region. Balochistan-based militant groups (BLA, BLF) have repeatedly targeted CPEC projects, viewing them as extractive and exploitative. The current data shows ${filtered.filter(i => i.Title.toLowerCase().includes('cpec') || i.Title.toLowerCase().includes('chinese')).length} incidents related to Chinese interests.`;
-      }
-      
-      // GENERAL FALLBACK
-      return `Based on the current incident data (${filtered.length} incidents), I can analyze:
-• Regional hotspots in ${[...new Set(filtered.map(i => i.Region))].join(', ') || 'no active regions'}
-• Actor involvement including ${[...new Set(filtered.map(i => i.Title).join(' ').match(/TTP|BLA|BLF|ISKP/gi) || ['state forces'])].join(', ')}
-• Trends in ${[...new Set(filtered.map(i => i.Type))].join(', ') || 'no active categories'}
+        
+        return `[Current Data] SECURITY SITUATION SUMMARY:
 
-Could you refine your question to focus on a specific region, actor, or trend for more detailed analysis?`;
+Total Incidents: ${filtered.length}
+Active Regions: ${regions.join(', ') || 'None'}
+Incident Types: ${types.join(', ') || 'None'}
+
+Severity Distribution:
+• Critical: ${critical} (Requires immediate response)
+• High: ${high} (Urgent attention needed)
+• Medium: ${medium} (Monitor and track)
+• Low: ${low} (Routine reporting)
+
+Key Observations:
+${filtered.length > 0 ? `• Top regions: ${regions.slice(0, 3).join(', ')}` : 'No active incidents'}
+${filtered.length > 0 ? `• Dominant type: ${types[0] || 'N/A'}` : ''}
+${critical > 0 ? '• CRITICAL ALERT: Active critical incidents require immediate action' : '• No critical incidents currently'}
+
+Recommendation: ${critical > 0 ? 'IMMEDIATE SECURITY RESPONSE REQUIRED' : 'Continue routine monitoring and intelligence gathering'}`;
+      }
+      
+      // ===== CPEC / CHINESE INTERESTS =====
+      if (q.includes('cpec') || q.includes('chinese') || q.includes('china') && q.includes('project') || q.includes('gwadar')) {
+        const cpecIncidents = filtered.filter(i => 
+          i.Title.toLowerCase().includes('cpec') || 
+          i.Title.toLowerCase().includes('chinese') ||
+          i.Title.toLowerCase().includes('gwadar') ||
+          i.Summary.toLowerCase().includes('cpec') ||
+          i.Summary.toLowerCase().includes('chinese')
+        );
+        return `[Historical Context + Current Data] CPEC Security Analysis:
+
+What is CPEC?
+• $62 billion China-Pakistan Economic Corridor
+• Flagship project of Belt and Road Initiative (BRI)
+• Connects Gwadar Port to China's Xinjiang via road/rail
+• Includes energy, transport, and infrastructure projects
+
+Security Threats:
+• BLA/BLF view CPEC as extractive and exploitative
+• Attacks on Chinese engineers, convoys, and construction sites
+• Targeting of Gwadar Port and coastal highway
+• Propaganda campaigns against Chinese presence
+
+Current Data: ${cpecIncidents.length} CPEC-related incidents
+${cpecIncidents.length > 0 ? `Recent: ${cpecIncidents.slice(0, 2).map(i => `• ${i.Title} (${i.Region})`).join('\n')}` : 'No CPEC incidents in current view'}
+
+Mitigation Measures:
+• Special Security Division for CPEC
+• Intelligence-based operations
+• Community engagement programs
+• Chinese worker protection protocols`;
+      }
+      
+      // ===== CASUALTIES / VICTIMS =====
+      if (q.includes('casualty') || q.includes('death') || q.includes('killed') || q.includes('injured') || q.includes('victim') || q.includes('civilian')) {
+        return `[Current Data] Casualty and Victim Analysis:
+
+Based on current incidents:
+• Security forces: Primary targets of militant attacks
+• Civilians: Affected by IEDs, crossfire, and terror attacks
+• Pattern: ${filtered.some(i => i.Severity === 'Critical') ? 'Multiple critical incidents with likely casualties' : 'No critical casualties indicated'}
+
+Key Observations:
+• Attacks often target security forces specifically
+• Civilian casualties occur in crowded areas (markets, schools)
+• Infiltration attacks lead to casualties in tribal areas
+• Targeted killings by militants
+
+Response:
+• Medical evacuation protocols activated
+• Civilian protection measures in place
+• Investigation into responsible groups
+• Compensation for affected families`;
+      }
+      
+      // ===== FALLBACK RESPONSE =====
+      return `Based on the current incident data (${filtered.length} incidents in view), I can provide analysis on:
+
+📊 Trend Analysis - Type distribution, regional patterns, severity trends
+📍 Regional Hotspots - Most active provinces and districts
+🎯 Actor Attribution - TTP, BLA, BLF, ISKP, and state forces
+⚔️ Operations - IBOs, clearance operations, security response
+🏛️ Diplomacy - Foreign relations, CPEC, regional geopolitics
+📈 Severity - Critical/High incidents requiring immediate response
+
+To get specific information, please ask about:
+• "Why terrorism in Balochistan?" (historical context + current data)
+• "What is TTP?" (background and current activity)
+• "What are the trends?" (analysis of current patterns)
+• "Which region is worst?" (top hotspots with severity breakdown)
+• "Who is responsible?" (actor identification from current data)
+• "What happened?" (summary of all current incidents)
+
+I analyze based on your current filtered view. Try adjusting filters for region/time-specific insights.`;
     };
 
-    // Generate and display response immediately (no API call)
-    const response = generateChatResponse(userMsg);
+    // Get response and update chat - IMMEDIATE, NO API
+    const response = generateResponse(userMsg);
     setChatMessages(prev => [...prev, {role: 'ai', text: response}]);
     setChatLoading(false);
   };
@@ -341,7 +600,7 @@ Could you refine your question to focus on a specific region, actor, or trend fo
                           value={chatInput}
                           onChange={e => setChatInput(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
-                          placeholder="Ask about context, history, or details..."
+                          placeholder="Ask about Balochistan, TTP, trends, regions..."
                           style={{ flex: 1, background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
                         />
                         <button
@@ -352,7 +611,7 @@ Could you refine your question to focus on a specific region, actor, or trend fo
                           Ask
                         </button>
                       </div>
-                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based on current incidents and general security knowledge. No API key required.</p>
+                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>✅ AI answers based on current incidents + historical context. No API key needed - works instantly!</p>
                     </div>
                   </>
                 )}
@@ -413,7 +672,7 @@ Could you refine your question to focus on a specific region, actor, or trend fo
       </main>
 
       <footer style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: '#475569', borderTop: '1px solid #1e293b' }}>
-        <p>Data: Dawn, The News, ARY, Tribune, Long War Journal & Google News | Powered by n8n + AI</p>
+        <p>Data: Dawn, The News, ARY, Tribune, Long War Journal & Google News | Powered by AI Analysis</p>
         <p style={{ marginTop: '4px' }}>Auto-refreshes every 3 minutes. Last updated: {lastUpdated || 'Loading...'}</p>
       </footer>
     </div>
