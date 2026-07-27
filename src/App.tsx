@@ -15,7 +15,7 @@ interface Incident {
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
 // REPLACE THIS WITH YOUR REAL GEMINI KEY
-const GEMINI_API_KEY = 'AIzaSyYourRealKeyHere';
+const GEMINI_API_KEY = 'AQ.Ab8RN6LIr6nPFTxi6YIvk96TuKVJgbu9NOrdCgEmrWputvF6Lw';
 
 function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
