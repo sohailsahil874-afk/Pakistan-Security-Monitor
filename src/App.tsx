@@ -169,7 +169,48 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
     }
     setBriefingLoading(false);
   };
+const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, {role: 'user', text: userMsg}]);
+    setChatInput('');
+    setChatLoading(true);
 
+    const context = filtered.slice(0, 15);
+    const history = chatMessages.map(m => `${m.role === 'user' ? 'User' : 'Analyst'}: ${m.text}`).join('\n');
+
+    const prompt = `You are a senior Pakistan security affairs analyst. You have access to the following incident data and previous conversation. Answer the user's follow-up question based ONLY on the provided data. Do not invent incidents.
+
+INCIDENTS DATA:
+${JSON.stringify(context, null, 2)}
+
+CONVERSATION HISTORY:
+${history}
+
+USER QUESTION: ${userMsg}
+
+Provide a concise, factual answer. If the question asks about history or context not in the data, say "Based on the available data, I cannot provide historical context beyond what's shown in these incidents."`;
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
+          })
+        }
+      );
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'I cannot answer that based on the available data.';
+      setChatMessages(prev => [...prev, {role: 'ai', text}]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, {role: 'ai', text: 'Sorry, I encountered an error processing your question.'}]);
+    }
+    setChatLoading(false);
+  };
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#94a3b8', background: '#0b1120' }}>
@@ -225,20 +266,67 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '17px', color: '#fff', margin: 0 }}><Sparkles size={20} /> AI Strategic Briefing</h2>
                 <button onClick={() => setShowBriefing(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}><X size={20} /></button>
               </div>
-              <div style={{ padding: '20px' }}>
-                {briefingLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
-                    <div style={{ width: '24px', height: '24px', border: '2px solid #1e293b', borderTopColor: '#a855f7', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <p>Gemini AI is analyzing incidents...</p>
-                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  </div>
-                ) : (
-                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#cbd5e1', fontSize: '14px' }}>{briefing}</div>
-                )}
-              </div>
+             <div style={{ padding: '20px' }}>
+  {briefingLoading ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
+      <div style={{ width: '24px', height: '24px', border: '2px solid #1e293b', borderTopColor: '#a855f7', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <p>Gemini AI is analyzing incidents...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  ) : (
+    <>
+      <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#cbd5e1', fontSize: '14px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #334155' }}>
+        {briefing}
+      </div>
+
+      {/* CHAT SECTION */}
+      <div style={{ marginTop: '16px' }}>
+        <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '12px', fontWeight: 600 }}>💬 Ask Follow-up</h3>
+
+        <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {chatMessages.map((msg, i) => (
+            <div key={i} style={{ 
+              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              background: msg.role === 'user' ? '#3b82f6' : '#334155',
+              color: '#fff',
+              padding: '8px 12px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              maxWidth: '85%',
+              lineHeight: 1.5
+            }}>
+              {msg.text}
             </div>
-          </div>
-        )}
+          ))}
+          {chatLoading && (
+            <div style={{ alignSelf: 'flex-start', background: '#334155', color: '#94a3b8', padding: '8px 12px', borderRadius: '12px', fontSize: '13px' }}>
+              Analyzing...
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text"
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
+            placeholder="Ask about context, history, or details..."
+            style={{ flex: 1, background: '#0f172a', border: '1px solid #334155', color: '#e2e8f0', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+          />
+          <button
+            onClick={sendChatMessage}
+            disabled={chatLoading || !chatInput.trim()}
+            style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: chatLoading || !chatInput.trim() ? 0.6 : 1 }}
+          >
+            Ask
+          </button>
+        </div>
+        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based only on the current incident data.</p>
+      </div>
+    </>
+  )}
+</div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e293b', border: '1px solid #334155', padding: '12px 16px', borderRadius: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <Filter size={16} />
