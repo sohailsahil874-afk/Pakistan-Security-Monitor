@@ -14,7 +14,7 @@ interface Incident {
 }
 
 const SHEET_ID = '1e52xzhWzXffkgzvf-H1gRwnOlJxZ_vG14gPnJrh0_B8';
-// REPLACE THIS WITH YOUR REAL GEMINI KEY
+// REPLACE WITH YOUR REAL GEMINI KEY (starts with AIzaSy)
 const GEMINI_API_KEY = 'AQ.Ab8RN6LIr6nPFTxi6YIvk96TuKVJgbu9NOrdCgEmrWputvF6Lw';
 
 function App() {
@@ -123,7 +123,7 @@ Maintain heightened alert in ${activeRegions.slice(0, 3).join(', ')}. Expect con
     if (filtered.length === 0) return;
     setBriefingLoading(true);
     setShowBriefing(true);
-    setChatMessages([]); // reset chat on new briefing
+    setChatMessages([]);
 
     const prompt = `You are a senior Pakistan security affairs analyst with 20 years of experience. Analyze these incidents and produce a concise strategic briefing (max 350 words) with:
 
@@ -153,8 +153,6 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
       const data = await res.json();
       if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
         setBriefing(data.candidates[0].content.parts[0].text);
-      } else if (data.error) {
-        setBriefing(generateFallbackBriefing(filtered));
       } else {
         setBriefing(generateFallbackBriefing(filtered));
       }
@@ -174,17 +172,21 @@ ${JSON.stringify(filtered.slice(0, 15), null, 2)}`;
     const context = filtered.slice(0, 15);
     const history = chatMessages.map(m => `${m.role === 'user' ? 'User' : 'Analyst'}: ${m.text}`).join('\n');
 
-    const prompt = `You are a senior Pakistan security affairs analyst. You have access to the following incident data and previous conversation. Answer the user's follow-up question based ONLY on the provided data. Do not invent incidents.
+    const prompt = `You are a senior Pakistan security affairs analyst with deep knowledge of South Asian geopolitics, militancy, and counter-terrorism. 
 
-INCIDENTS DATA:
+You have access to the following CURRENT incident data from the last 7 days:
 ${JSON.stringify(context, null, 2)}
 
-CONVERSATION HISTORY:
+Conversation so far:
 ${history}
 
-USER QUESTION: ${userMsg}
+User asks: ${userMsg}
 
-Provide a concise, factual answer. If the question asks about history or context not in the data, say "Based on the available data, I cannot provide historical context beyond what's shown in these incidents."`;
+INSTRUCTIONS:
+- If the question is about the CURRENT incidents, answer using the data above.
+- If the question asks for historical context, background, or analysis of groups (TTP, BLA, etc.), use your general knowledge BUT clearly label it as "Historical Context" vs "Current Data."
+- Be concise (3-4 sentences max). Use professional intelligence tone.
+- Never invent current incidents not in the data.`;
 
     try {
       const res = await fetch(
@@ -275,7 +277,6 @@ Provide a concise, factual answer. If the question asks about history or context
                       {briefing}
                     </div>
 
-                    {/* CHAT SECTION */}
                     <div style={{ marginTop: '16px' }}>
                       <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '12px', fontWeight: 600 }}>💬 Ask Follow-up</h3>
 
@@ -318,7 +319,7 @@ Provide a concise, factual answer. If the question asks about history or context
                           Ask
                         </button>
                       </div>
-                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based only on the current incident data.</p>
+                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>AI answers based on current incidents and general security knowledge.</p>
                     </div>
                   </>
                 )}
